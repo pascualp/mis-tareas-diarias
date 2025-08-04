@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Productividad con Subtareas</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        :root {
+            --primary-color: #6c5ce7;
+            --secondary-color: #a29bfe;
+            --success-color: #00b894;
+            --danger-color: #d63031;
+            --warning-color-1: #fdcb6e;
+            --warning-color-2: #e17055;
+            --critical-color: #d63031;
+            --light-bg: #f8f9fa;
+            --dark-text: #2d3436;
+            --light-text: #636e72;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0; padding: 20px;
+            display: flex; justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%; max-width: 700px;
+            background-color: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 30px; box-sizing: border-box;
+        }
+        header { text-align: center; border-bottom: 1px solid #e0e0e0; padding-bottom: 20px; margin-bottom: 20px; }
+        h1 { color: var(--dark-text); margin: 0; }
+        #quote { color: var(--primary-color); font-style: italic; margin-top: 10px; min-height: 20px; }
+        .progress-container { margin-bottom: 20px; }
+        .progress-bar { width: 100%; background-color: #e0e0e0; border-radius: 25px; height: 25px; overflow: hidden; }
+        #progress-bar-fill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, #1dd1a1, var(--success-color));
+            border-radius: 25px; transition: width 0.5s ease;
+            text-align: center; line-height: 25px; color: white; font-weight: 600;
+        }
+        #task-form { display: flex; gap: 10px; margin-bottom: 25px; }
+        #task-input { flex-grow: 1; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; }
+        #task-input:focus { outline: none; border-color: var(--primary-color); }
+        #add-task-btn {
+            background-color: var(--primary-color); color: white; border: none; padding: 12px 20px;
+            border-radius: 8px; font-size: 1em; font-weight: bold; cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #add-task-btn:hover { background-color: #5849c1; }
+
+        .task-section h2 { color: var(--dark-text); margin-top: 20px; margin-bottom: 10px; border-bottom: 2px solid var(--primary-color); padding-bottom: 5px; }
+        
+        ul { list-style: none; padding: 0; margin: 0; }
+        
+        /* --- Tarea Principal --- */
+        .task-item {
+            background-color: var(--light-bg); border-radius: 8px; margin-bottom: 10px;
+            border-left: 5px solid #bdc3c7; transition: all 0.3s;
+        }
+        .main-task-content { display: flex; align-items: center; padding: 15px; cursor: pointer; }
+        .task-text { flex-grow: 1; font-weight: 600; }
+        .task-item.aging-1 { border-left-color: var(--warning-color-1); }
+        .task-item.aging-2 { border-left-color: var(--warning-color-2); }
+        .task-item.critical { border-left-color: var(--critical-color); }
+
+        /* --- Controles de Tarea Principal --- */
+        .task-controls button {
+            background: none; border: none; font-size: 1.2em; cursor: pointer;
+            margin-left: 8px; color: var(--light-text); transition: color 0.3s;
+        }
+        .task-controls button:hover { color: var(--primary-color); }
+        .delete-btn:hover { color: var(--danger-color) !important; }
+        .toggle-subtasks { font-size: 0.8em; transition: transform 0.3s; }
+        .task-item.open .toggle-subtasks { transform: rotate(180deg); }
+
+        /* --- Lista de Subtareas --- */
+        .subtask-list {
+            padding-left: 30px; padding-right: 15px; padding-bottom: 10px;
+            max-height: 0; overflow: hidden; transition: max-height 0.4s ease-in-out;
+        }
+        .task-item.open .subtask-list { max-height: 500px; /* Suficiente para varias subtareas */ }
+
+        .subtask-item {
+            display: flex; align-items: center; padding: 8px;
+            border-radius: 6px; cursor: pointer; transition: background-color 0.2s;
+        }
+        .subtask-item:hover { background-color: #e9ecef; }
+        .subtask-item .task-text { font-weight: 400; font-size: 0.95em; }
+        .subtask-item.completed { opacity: 0.6; }
+        .subtask-item.completed .task-text { text-decoration: line-through; }
+        .subtask-item .delete-btn { font-size: 1em; }
+        .subtask-checkbox {
+            width: 18px; height: 18px; border: 2px solid var(--light-text);
+            border-radius: 4px; margin-right: 12px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .subtask-item.completed .subtask-checkbox {
+            background-color: var(--success-color); border-color: var(--success-color);
+            color: white;
+        }
+
+        /* --- Tareas Completadas --- */
+        #completed-list .task-item { border-left-color: var(--success-color); background-color: #e8f5e9; }
+        #completed-list .task-item .main-task-content { cursor: default; }
+        #completed-list .task-item .add-subtask-btn, #completed-list .task-item .toggle-subtasks { display: none; }
+        #completed-list .task-text { color: var(--light-text); text-decoration: line-through; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Mi Panel de Conquistas</h1>
+            <p id="quote"></p>
+        </header>
+
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div id="progress-bar-fill"></div>
+            </div>
+        </div>
+
+        <form id="task-form">
+            <input type="text" id="task-input" placeholder="Añade una misión principal..." required autocomplete="off">
+            <button type="submit" id="add-task-btn">¡Al Ataque!</button>
+        </form>
+
+        <div class="task-section">
+            <h2>Misiones Activas</h2>
+            <ul id="task-list"></ul>
+        </div>
+        
+        <div class="task-section">
+            <h2>Misiones Completadas</h2>
+            <ul id="completed-list"></ul>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const taskForm = document.getElementById('task-form');
+        const taskInput = document.getElementById('task-input');
+        const taskList = document.getElementById('task-list');
+        const completedList = document.getElementById('completed-list');
+        const quoteElement = document.getElementById('quote');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+
+        const quotes = [
+            "Divide y vencerás. Cada pequeña tarea te acerca a la victoria.",
+            "Un objetivo sin un plan es solo un deseo.",
+            "La acción es la clave fundamental de todo éxito.",
+            "No se trata de tener tiempo, se trata de hacer tiempo.",
+            "El progreso, por pequeño que sea, sigue siendo progreso."
+        ];
+
+        // --- INICIALIZACIÓN ---
+        displayRandomQuote();
+        loadTasks();
+        setInterval(updateTaskAging, 60 * 1000); // Cada minuto
+
+        // --- MANEJO DE EVENTOS ---
+        taskForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const taskText = taskInput.value.trim();
+            if (taskText) {
+                const taskObject = { text: taskText, completed: false, timestamp: Date.now(), subtasks: [] };
+                createTaskElement(taskObject);
+                taskInput.value = '';
+                taskInput.focus();
+                saveAndRefresh();
+            }
+        });
+
+        document.querySelector('.container').addEventListener('click', e => {
+            const mainTaskElement = e.target.closest('.task-item');
+            if (!mainTaskElement) return;
+
+            // Toggle para mostrar/ocultar subtareas
+            if (e.target.matches('.toggle-subtasks, .toggle-subtasks *')) {
+                mainTaskElement.classList.toggle('open');
+            }
+            // Añadir subtarea
+            else if (e.target.matches('.add-subtask-btn, .add-subtask-btn *')) {
+                const subtaskText = prompt('Añade un nuevo paso para esta misión:');
+                if (subtaskText && subtaskText.trim()) {
+                    const subtask = { text: subtaskText.trim(), completed: false };
+                    createSubtaskElement(subtask, mainTaskElement.querySelector('.subtask-list'));
+                    checkParentTaskCompletion(mainTaskElement);
+                    saveAndRefresh();
+                }
+            }
+            // Eliminar tarea principal o subtarea
+            else if (e.target.matches('.delete-btn, .delete-btn *')) {
+                if (confirm('¿Estás seguro de que quieres eliminar esto?')) {
+                    const elementToRemove = e.target.closest('.task-item') || e.target.closest('.subtask-item');
+                    elementToRemove.remove();
+                    saveAndRefresh();
+                }
+            }
+            // Completar/Descompletar subtarea
+            else if (e.target.closest('.subtask-item')) {
+                const subtaskElement = e.target.closest('.subtask-item');
+                subtaskElement.classList.toggle('completed');
+                checkParentTaskCompletion(mainTaskElement);
+                saveAndRefresh();
+            }
+        });
+        
+        // --- FUNCIONES DE CREACIÓN DE ELEMENTOS ---
+        function createTaskElement(task) {
+            const li = document.createElement('li');
+            li.className = 'task-item';
+            li.dataset.timestamp = task.timestamp;
+
+            li.innerHTML = `
+                <div class="main-task-content">
+                    <span class="toggle-subtasks">▼</span>
+                    <span class="task-text">${task.text}</span>
+                    <div class="task-controls">
+                        <button class="add-subtask-btn" title="Añadir Subtarea">+</button>
+                        <button class="delete-btn" title="Eliminar Tarea">✖</button>
+                    </div>
+                </div>
+                <ul class="subtask-list"></ul>
+            `;
+            
+            const subtaskListElement = li.querySelector('.subtask-list');
+            task.subtasks.forEach(subtask => createSubtaskElement(subtask, subtaskListElement));
+            
+            if (task.completed) {
+                li.classList.add('completed');
+                completedList.appendChild(li);
+            } else {
+                taskList.appendChild(li);
+            }
+            checkParentTaskCompletion(li);
+        }
+
+        function createSubtaskElement(subtask, parentList) {
+            const subLi = document.createElement('li');
+            subLi.className = 'subtask-item';
+            if (subtask.completed) subLi.classList.add('completed');
+            
+            subLi.innerHTML = `
+                <span class="subtask-checkbox">${subtask.completed ? '✔' : ''}</span>
+                <span class="task-text">${subtask.text}</span>
+                <div class="task-controls">
+                    <button class="delete-btn" title="Eliminar Subtarea">✖</button>
+                </div>
+            `;
+            parentList.appendChild(subLi);
+            subLi.querySelector('.subtask-checkbox').innerHTML = subLi.classList.contains('completed') ? '✔' : '';
+        }
+
+        // --- LÓGICA DE COMPLETADO Y ACTUALIZACIÓN ---
+        function checkParentTaskCompletion(mainTaskElement) {
+            const subtasks = mainTaskElement.querySelectorAll('.subtask-item');
+            if (subtasks.length === 0) return; // No hacer nada si no hay subtareas
+
+            const allCompleted = [...subtasks].every(sub => sub.classList.contains('completed'));
+
+            if (allCompleted) {
+                if (mainTaskElement.parentElement.id !== 'completed-list') {
+                    completedList.appendChild(mainTaskElement);
+                }
+            } else {
+                 if (mainTaskElement.parentElement.id !== 'task-list') {
+                    taskList.appendChild(mainTaskElement);
+                }
+            }
+        }
+
+        function saveAndRefresh() {
+            saveTasks();
+            updateProgressBar();
+            updateTaskAging();
+        }
+
+        function updateProgressBar() {
+            const allSubtasks = document.querySelectorAll('.subtask-item');
+            const completedSubtasks = document.querySelectorAll('.subtask-item.completed');
+            const total = allSubtasks.length;
+            const completed = completedSubtasks.length;
+            const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
+            progressBarFill.style.width = `${percentage}%`;
+            progressBarFill.textContent = total > 0 ? `${percentage}% Completo` : '';
+        }
+
+        function updateTaskAging() {
+            const now = Date.now();
+            const oneDay = 24 * 3600 * 1000;
+            const twoDays = oneDay * 2;
+            const threeDays = oneDay * 3;
+
+            taskList.querySelectorAll('.task-item').forEach(li => {
+                const age = now - parseInt(li.dataset.timestamp, 10);
+                li.classList.remove('aging-1', 'aging-2', 'critical');
+                if (age > threeDays) li.classList.add('critical');
+                else if (age > twoDays) li.classList.add('aging-2');
+                else if (age > oneDay) li.classList.add('aging-1');
+            });
+        }
+
+        // --- PERSISTENCIA DE DATOS ---
+        function saveTasks() {
+            const tasksToSave = [];
+            document.querySelectorAll('#task-list .task-item, #completed-list .task-item').forEach(li => {
+                const subtasks = [];
+                li.querySelectorAll('.subtask-item').forEach(subLi => {
+                    subtasks.push({
+                        text: subLi.querySelector('.task-text').textContent,
+                        completed: subLi.classList.contains('completed')
+                    });
+                });
+                tasksToSave.push({
+                    text: li.querySelector('.main-task-content .task-text').textContent,
+                    completed: li.parentElement.id === 'completed-list',
+                    timestamp: li.dataset.timestamp,
+                    subtasks: subtasks
+                });
+            });
+            localStorage.setItem('tasksWithSubtasks', JSON.stringify(tasksToSave));
+        }
+
+        function loadTasks() {
+            const tasks = JSON.parse(localStorage.getItem('tasksWithSubtasks')) || [];
+            tasks.forEach(task => createTaskElement(task));
+            saveAndRefresh();
+        }
+
+        function displayRandomQuote() {
+            quoteElement.textContent = `"${quotes[Math.floor(Math.random() * quotes.length)]}"`;
+        }
+    });
+    </script>
+</body>
+</html>
